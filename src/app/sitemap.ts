@@ -1,12 +1,14 @@
 import type { MetadataRoute } from 'next'
 import { siteConfig } from '@/shared/config/site'
 import { locales, localeTags, type Locale } from '@/shared/i18n/config'
-import { docSlugs } from '@/modules/docs/content'
-import * as postsService from '@/modules/posts/server/posts.service'
+import { projectSlugs } from '@/modules/projects/content'
+import { templateSlugs } from '@/modules/open-source/content'
+import { postLocales, postSlugs } from '@/modules/blog/content'
 
-/** Rebuilt hourly, and on demand whenever a post's published state changes. */
-export const revalidate = 3600
-
+/**
+ * Every entry comes from typed content, so the sitemap is build-time static:
+ * no `revalidate`, no database, no try/catch around a query that could fail.
+ */
 type Entry = MetadataRoute.Sitemap[number]
 
 /**
@@ -22,10 +24,10 @@ function withAlternates(
   return locales
     .filter((locale) => availableLocales.includes(locale))
     .map((locale) => ({
-    url: `${siteConfig.url}/${locale}${path}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.7,
+      url: `${siteConfig.url}/${locale}${path}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
       ...options,
       alternates: {
         languages: Object.fromEntries(
@@ -37,47 +39,27 @@ function withAlternates(
     }))
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticEntries = [
-    ...withAlternates('', { priority: 1, changeFrequency: 'daily' }),
-    ...withAlternates('/blog', { priority: 0.9, changeFrequency: 'daily' }),
-    ...withAlternates('/docs', { priority: 0.9 }),
-    // Documentation exists in every locale, so no narrowing is needed here.
-    ...docSlugs().flatMap((slug) => withAlternates(`/docs/${slug}`, { priority: 0.7 })),
+export default function sitemap(): MetadataRoute.Sitemap {
+  return [
+    ...withAlternates('', { priority: 1 }),
+    ...withAlternates('/about', { priority: 0.9 }),
+    ...withAlternates('/projects', { priority: 0.9 }),
+    ...projectSlugs.flatMap((slug) => withAlternates(`/projects/${slug}`, { priority: 0.8 })),
+    ...withAlternates('/open-source', { priority: 0.9 }),
+    ...templateSlugs.flatMap((slug) =>
+      withAlternates(`/open-source/${slug}`, { priority: 0.7, changeFrequency: 'weekly' }),
+    ),
+    ...withAlternates('/experience', { priority: 0.8, changeFrequency: 'yearly' }),
+    ...withAlternates('/faq', { priority: 0.8 }),
+    ...withAlternates('/contact', { priority: 0.7, changeFrequency: 'yearly' }),
+    ...withAlternates('/blog', { priority: 0.6, changeFrequency: 'weekly' }),
+    // A post published in only one language narrows its own alternate set.
+    ...postSlugs.flatMap((slug) =>
+      withAlternates(
+        `/blog/${slug}`,
+        { priority: 0.5, changeFrequency: 'yearly' },
+        postLocales(slug),
+      ),
+    ),
   ]
-
-  const postEntries: MetadataRoute.Sitemap = []
-  try {
-    // One pass per locale; a slug that exists in both is emitted once per
-    // locale with the other declared as its alternate.
-    const byLocale = await Promise.all(
-      locales.map(async (locale) => ({ locale, posts: await postsService.listPublished(locale, 1000) })),
-    )
-
-    const localesBySlug = new Map<string, Locale[]>()
-    for (const { locale, posts } of byLocale) {
-      for (const post of posts) {
-        localesBySlug.set(post.slug, [...(localesBySlug.get(post.slug) ?? []), locale])
-      }
-    }
-
-    const seen = new Set<string>()
-    for (const { posts } of byLocale) {
-      for (const post of posts) {
-        if (seen.has(post.slug)) continue
-        seen.add(post.slug)
-        postEntries.push(
-          ...withAlternates(
-            `/blog/${post.slug}`,
-            { lastModified: post.updatedAt, priority: 0.6, changeFrequency: 'monthly' },
-            localesBySlug.get(post.slug) ?? [],
-          ),
-        )
-      }
-    }
-  } catch {
-    // A database hiccup should degrade the sitemap, not break the route.
-  }
-
-  return [...staticEntries, ...postEntries]
 }

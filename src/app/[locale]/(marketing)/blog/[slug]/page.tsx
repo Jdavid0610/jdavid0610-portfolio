@@ -1,67 +1,49 @@
+import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { isLocale, type Locale } from '@/shared/i18n/config'
+import { isLocale } from '@/shared/i18n/config'
 import { getDictionary } from '@/shared/i18n/get-dictionary'
-import { siteConfig } from '@/shared/config/site'
-import { formatDate } from '@/shared/lib/format'
-import { articleJsonLd, breadcrumbJsonLd, JsonLd } from '@/shared/lib/json-ld'
 import { buildMetadata } from '@/shared/lib/seo'
+import { formatIsoDate } from '@/shared/lib/format'
 import { routes } from '@/shared/lib/routes'
-import { NotFoundError } from '@/server/errors'
-import * as postsService from '@/modules/posts/server/posts.service'
-
-export const revalidate = 3600
-/** Posts published after the last build are rendered on demand, then cached. */
-export const dynamicParams = true
+import { breadcrumbs } from '@/shared/lib/breadcrumbs'
+import { articleJsonLd, breadcrumbJsonLd, graph, JsonLd } from '@/shared/lib/json-ld'
+import { BreadcrumbTrail } from '@/shared/ui/breadcrumb-trail'
+import { TagList } from '@/shared/ui/tag'
+import { getPost, postLocales, postSlugsFor } from '@/modules/blog/content'
+import { PostBlocks } from '@/modules/blog/ui/post-blocks'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
 
 /**
- * Prerenders every published post at build time. The database may not be
- * reachable in CI, so a failure degrades to on-demand rendering instead of
- * failing the build.
+ * A nested `generateStaticParams` receives the parent segment's params, so
+ * each locale prerenders only the posts published in that language.
  */
 export async function generateStaticParams({
   params,
 }: {
-  // A nested generateStaticParams receives the parent segment's params, so
-  // each locale is prerendered with only the posts written in that language.
   params: { locale: string }
 }): Promise<Array<{ slug: string }>> {
   if (!isLocale(params.locale)) return []
-  try {
-    const slugs = await postsService.listPublishedSlugs(params.locale)
-    return slugs.map((slug) => ({ slug }))
-  } catch {
-    return []
-  }
-}
-
-async function loadPost(slug: string, locale: Locale) {
-  try {
-    return await postsService.getPublishedBySlug(slug, locale)
-  } catch (error) {
-    if (error instanceof NotFoundError) return null
-    throw error
-  }
+  return postSlugsFor(params.locale).map((slug) => ({ slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params
   if (!isLocale(locale)) return {}
 
-  const post = await loadPost(slug, locale)
+  const post = getPost(locale, slug)
   if (!post) return buildMetadata({ locale, path: `/blog/${slug}`, noIndex: true })
 
   return buildMetadata({
     locale,
     path: `/blog/${post.slug}`,
     title: post.title,
-    description: post.excerpt || post.content.slice(0, 155),
+    description: post.description,
     type: 'article',
-    publishedTime: (post.publishedAt ?? post.updatedAt).toISOString(),
+    publishedTime: post.publishedAt,
     // Only advertise translations that exist.
-    availableLocales: await postsService.listTranslations(post.slug),
+    availableLocales: postLocales(post.slug),
   })
 }
 
@@ -69,46 +51,57 @@ export default async function BlogPostPage({ params }: Props) {
   const { locale, slug } = await params
   if (!isLocale(locale)) notFound()
 
-  const post = await loadPost(slug, locale)
+  const post = getPost(locale, slug)
   if (!post) notFound()
 
   const t = getDictionary(locale)
+  const path = `/blog/${post.slug}`
+  const trail = breadcrumbs(locale, t, [
+    { name: t.nav.blog, path: routes.blog(locale) },
+    { name: post.title, path: routes.blogPost(locale, post.slug) },
+  ])
 
   return (
-    <article className="mx-auto max-w-3xl px-4 py-16">
-      <header className="flex flex-col gap-3">
-        <h1 className="text-4xl font-bold tracking-tight text-balance">{post.title}</h1>
-        <p className="text-sm text-muted">
-          {post.authorName} ·{' '}
-          <time dateTime={(post.publishedAt ?? post.updatedAt).toISOString()}>
-            {formatDate(post.publishedAt, locale)}
-          </time>
+    <article className="py-10">
+      <BreadcrumbTrail items={trail} label={t.nav.footerLabel} />
+
+      <header className="mt-6">
+        <h1 className="text-3xl font-semibold sm:text-4xl">{post.title}</h1>
+        <p className="mt-3 text-sm text-faint">
+          {t.blog.publishedOn}{' '}
+          <time dateTime={post.publishedAt}>{formatIsoDate(post.publishedAt, locale)}</time>
         </p>
+        <p className="mt-4 max-w-measure text-pretty text-lg text-muted">{post.description}</p>
       </header>
 
-      {post.excerpt ? <p className="mt-6 text-lg text-muted text-pretty">{post.excerpt}</p> : null}
+      <div className="mt-10">
+        <PostBlocks blocks={post.blocks} />
+      </div>
 
-      <div className="mt-8 flex flex-col gap-4 leading-relaxed whitespace-pre-wrap">
-        {post.content}
+      <div className="mt-12 flex flex-col gap-6 rule-top pt-6">
+        <TagList items={post.tags} label={t.blog.tagsTitle} />
+        <p className="text-sm">
+          <Link
+            href={routes.blog(locale)}
+            className="text-brand underline decoration-border underline-offset-4"
+          >
+            {t.blog.backToBlog}
+          </Link>
+        </p>
       </div>
 
       <JsonLd
-        data={articleJsonLd({
-          locale,
-          title: post.title,
-          description: post.excerpt || post.content.slice(0, 155),
-          slug: post.slug,
-          authorName: post.authorName,
-          publishedAt: post.publishedAt,
-          updatedAt: post.updatedAt,
-        })}
-      />
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: t.nav.home, url: `${siteConfig.url}${routes.home(locale)}` },
-          { name: t.nav.blog, url: `${siteConfig.url}${routes.blog(locale)}` },
-          { name: post.title, url: `${siteConfig.url}${routes.blogPost(locale, post.slug)}` },
-        ])}
+        data={graph(
+          articleJsonLd({
+            locale,
+            title: post.title,
+            description: post.description,
+            slug: post.slug,
+            publishedAt: post.publishedAt,
+            updatedAt: post.updatedAt,
+          }),
+          breadcrumbJsonLd(trail, { locale, path }),
+        )}
       />
     </article>
   )

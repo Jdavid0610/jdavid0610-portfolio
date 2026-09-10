@@ -9,8 +9,19 @@ import { setCookie } from '@/shared/lib/cookies'
 /**
  * Swaps the locale segment in place, so the user stays on the page they were
  * reading, and remembers the choice for the proxy's next negotiation.
+ *
+ * Rendered as a segmented control rather than a pair of loose buttons: with two
+ * options, showing both and marking the live one is one tap and needs no
+ * explanation, where a select needs a tap to reveal what it even contains.
  */
-export function LocaleSwitcher({ current }: { current: Locale }) {
+export function LocaleSwitcher({
+  current,
+  /** Fills its container — the drawer footer wants a full-width control. */
+  block = false,
+}: {
+  current: Locale
+  block?: boolean
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -26,7 +37,7 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
   }
 
   return (
-    <div className="flex items-center gap-1" role="group" aria-label="Language">
+    <div className={cn('seg', block && 'w-full')} role="group" aria-label="Language">
       {locales.map((locale) => (
         <button
           key={locale}
@@ -35,10 +46,7 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
           onClick={() => switchTo(locale)}
           aria-current={locale === current ? 'true' : undefined}
           title={localeNames[locale]}
-          className={cn(
-            'rounded px-2 py-1 text-xs font-medium uppercase transition',
-            locale === current ? 'bg-border text-fg' : 'text-muted hover:text-fg',
-          )}
+          className={cn('seg-item uppercase', block && 'flex-1 py-2.5 text-center')}
         >
           {locale}
         </button>

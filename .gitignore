@@ -10,3 +10,12 @@ coverage
 test-results
 playwright-report
 .DS_Store
+
+# The seeded design canvas is 2.6MB and regenerable; its .dc.html sources are not.
+design/*.html
+!design/*.dc.html
+.playwright-mcp
+
+/design
+
+

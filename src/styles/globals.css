@@ -1,69 +1,772 @@
 @import 'tailwindcss';
 
-/* Tailwind v4 is configured in CSS — there is no tailwind.config.js. */
+/**
+ * Tailwind v4 is configured in CSS — there is no tailwind.config.js.
+ *
+ * "Deep field": a dark, luminous palette built on the blue this site already
+ * used (hue ~250) so the identity is the old one pushed, not a new one. Dark is
+ * the DEFAULT rather than an OS-conditional variant, because the first
+ * impression is part of the deliverable here; the header's toggle writes an
+ * explicit choice and `[data-theme]` overrides these values.
+ *
+ * To follow the operating system instead, move the light block under
+ * `@media (prefers-color-scheme: light)` guarded by `:root:not([data-theme='dark'])`.
+ */
 @theme {
-  --color-bg: oklch(99% 0.004 260);
-  --color-surface: oklch(100% 0 0);
-  --color-border: oklch(91% 0.006 260);
-  --color-fg: oklch(21% 0.02 260);
-  --color-muted: oklch(52% 0.015 260);
-  --color-brand: oklch(56% 0.19 265);
-  --color-brand-fg: oklch(99% 0 0);
-  --color-danger: oklch(58% 0.21 25);
-  --color-success: oklch(62% 0.16 155);
+  --color-bg: oklch(14% 0.014 255);
+  --color-surface: oklch(18% 0.018 255);
+  --color-raised: oklch(22% 0.021 255);
+  --color-border: oklch(30% 0.02 255);
+  --color-border-strong: oklch(42% 0.03 255);
+  --color-fg: oklch(97% 0.004 250);
+  --color-muted: oklch(74% 0.013 250);
+  /* Small metadata text. Measured 6.8:1 on `bg`, 5.4:1 on `surface`. */
+  --color-faint: oklch(60% 0.014 250);
+  --color-brand: oklch(72% 0.15 250);
+  /**
+   * Ink ON the accent. The accent is luminous (L 72%), so white text over it
+   * would land near 2.4:1 — near-black gives ~8:1 and reads as intentional.
+   */
+  --color-brand-fg: oklch(18% 0.02 255);
+  --color-brand-subtle: oklch(27% 0.035 255);
+  /* Status green, same lightness and chroma as the accent, hue rotated. */
+  --color-live: oklch(72% 0.15 165);
+  --color-danger: oklch(70% 0.16 25);
+  --color-success: oklch(72% 0.13 155);
 
   --radius-card: 0.75rem;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --font-sans: var(--font-plex), -apple-system, 'Segoe UI', Helvetica, sans-serif;
+  --font-display: var(--font-grotesk), 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* One measure for running prose, so every page reads at the same width.
+     Registered in the `--container-*` namespace, which is what Tailwind v4
+     builds `max-w-*` utilities from. */
+  --container-measure: 38rem;
 }
 
 /**
- * Dark palette.
+ * Light, as an explicit choice only.
  *
- * `@theme` only works at the top level: nested inside `@layer` and a media
- * query it is hoisted, so these values overwrote the light ones unconditionally
- * and the app rendered dark in every scheme. The fix is to let `@theme` define
- * the light defaults and override the plain CSS variables it emits on `:root`
- * here — which is ordinary cascade, and actually conditional.
+ * `@theme` only works at the top level: nested inside `@layer` or a media
+ * query it is hoisted and would overwrite the defaults unconditionally. So
+ * `@theme` defines the dark defaults above and this block overrides the plain
+ * CSS variables it emitted on `:root` — ordinary cascade, actually conditional.
  */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: oklch(17% 0.015 260);
-    --color-surface: oklch(21% 0.018 260);
-    --color-border: oklch(30% 0.02 260);
-    --color-fg: oklch(96% 0.005 260);
-    --color-muted: oklch(70% 0.015 260);
-    --color-brand: oklch(70% 0.16 265);
-    --color-brand-fg: oklch(17% 0.02 260);
-  }
+:root[data-theme='light'] {
+  --color-bg: oklch(98.5% 0.004 255);
+  --color-surface: oklch(100% 0 0);
+  --color-raised: oklch(100% 0 0);
+  --color-border: oklch(90% 0.008 255);
+  --color-border-strong: oklch(78% 0.02 255);
+  --color-fg: oklch(20% 0.016 255);
+  --color-muted: oklch(46% 0.014 250);
+  /* Measured 4.9:1 on `bg`. */
+  --color-faint: oklch(54% 0.014 250);
+  --color-brand: oklch(48% 0.16 255);
+  --color-brand-fg: oklch(99% 0 0);
+  --color-brand-subtle: oklch(95% 0.02 255);
+  --color-live: oklch(48% 0.13 165);
+  --color-danger: oklch(52% 0.19 25);
+  --color-success: oklch(52% 0.13 155);
 }
 
 @layer base {
   :root {
-    color-scheme: light dark;
+    color-scheme: dark;
+    /* Drives the atmosphere layers, which are strong on dark and faint on light. */
+    --bloom-opacity: 0.4;
+    --grid-ink: oklch(100% 0 0 / 0.028);
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+    --bloom-opacity: 0.14;
+    --grid-ink: oklch(20% 0.02 255 / 0.045);
   }
 
   html {
     scroll-behavior: smooth;
+    /* Anchored deep links land below the sticky header. */
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-bg);
     color: var(--color-fg);
     font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    line-height: 1.12;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
   }
 
   ::selection {
-    background-color: color-mix(in oklch, var(--color-brand) 30%, transparent);
+    background-color: color-mix(in oklch, var(--color-brand) 28%, transparent);
   }
 
   :focus-visible {
     outline: 2px solid var(--color-brand);
     outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Motion here is decoration; meaning is always carried by the text. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
+  /**
+   * Running prose. Applied to a wrapper so content modules stay plain data
+   * and no component has to remember the paragraph rhythm.
+   */
+  .prose-body > * + * {
+    margin-top: 1em;
+  }
+
+  .prose-body p {
+    max-width: var(--container-measure);
+    color: var(--color-muted);
+    text-wrap: pretty;
+  }
+
+  /* A quiet rule that separates a section without drawing a box. */
+  .rule-top {
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* ---------- Atmosphere ---------- */
+
+  /**
+   * A faint engineering grid, masked to fade out down the page so it never
+   * competes with content. Decorative: always `aria-hidden`.
+   */
+  .grid-field {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, var(--grid-ink) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-ink) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 120% 60% at 50% 0%, #000 30%, transparent 78%);
+  }
+
+  .bloom {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(90px);
+    opacity: var(--bloom-opacity);
+    background: var(--color-brand);
+  }
+
+  /* ---------- Identity mark ---------- */
+
+  .mark-badge {
+    display: grid;
+    place-items: center;
+    border-radius: 0.5625rem;
+    color: oklch(99% 0 0);
+    background: linear-gradient(
+      145deg,
+      var(--color-brand),
+      color-mix(in oklch, var(--color-brand) 55%, oklch(45% 0.16 285))
+    );
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--color-brand) 45%, transparent),
+      0 6px 18px -6px var(--color-brand);
+    transition:
+      transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 320ms ease;
+  }
+
+  .group:hover .mark-badge {
+    transform: rotate(-8deg) scale(1.06);
+    box-shadow:
+      0 0 0 1px var(--color-brand),
+      0 10px 26px -6px var(--color-brand);
+  }
+
+  /* ---------- Navigation ---------- */
+
+  /**
+   * The rail: an accent underline that wipes in from the left under the cursor
+   * and stays put on the current section. `aria-current` drives the persistent
+   * state, so the styling follows the accessibility tree rather than a class.
+   */
+  .nav-link {
+    position: relative;
+    border-radius: 0.5rem;
+    padding: 0.5625rem 0.8125rem;
+    color: var(--color-muted);
+    transition:
+      color 200ms ease,
+      background-color 200ms ease;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0.8125rem;
+    right: 0.8125rem;
+    bottom: 0.125rem;
+    height: 1.5px;
+    border-radius: 2px;
+    background: var(--color-brand);
+    transform: scaleX(0);
+    transform-origin: left;
+    opacity: 0;
+    transition:
+      transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 200ms ease;
+  }
+
+  .nav-link:hover {
+    color: var(--color-fg);
+    background-color: color-mix(in oklch, var(--color-fg) 5%, transparent);
+  }
+
+  .nav-link:hover::after,
+  .nav-link[aria-current='page']::after {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  .nav-link[aria-current='page'] {
+    color: var(--color-fg);
+  }
+
+  /* ---------- Segmented control ---------- */
+
+  .seg {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 0.5625rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .seg-item {
+    border-radius: 0.375rem;
+    padding: 0.3125rem 0.5625rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--color-faint);
+    transition:
+      color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .seg-item:hover {
+    color: var(--color-fg);
+  }
+
+  .seg-item[aria-current='true'] {
+    color: var(--color-fg);
+    background-color: color-mix(in oklch, var(--color-fg) 9%, transparent);
+  }
+
+  /* ---------- Actions ---------- */
+
+  /** The primary action. A light sweep crosses it once on hover. */
+  .cta {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5625rem;
+    padding: 0.625rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 550;
+    color: var(--color-brand-fg);
+    background: var(--color-brand);
+    box-shadow: 0 6px 20px -8px var(--color-brand);
+    transition:
+      transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 240ms ease;
+  }
+
+  .cta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      oklch(100% 0 0 / 0.32) 50%,
+      transparent 80%
+    );
+    transform: translateX(-120%);
+    transition: transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -8px var(--color-brand);
+  }
+
+  .cta:hover::before {
+    transform: translateX(120%);
+  }
+
+  .cta-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5625rem;
+    border: 1px solid var(--color-border);
+    padding: 0.625rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    transition:
+      border-color 220ms ease,
+      background-color 220ms ease,
+      transform 240ms ease;
+  }
+
+  .cta-ghost:hover {
+    border-color: var(--color-border-strong);
+    background-color: color-mix(in oklch, var(--color-fg) 4%, transparent);
+    transform: translateY(-2px);
+  }
+
+  /** An icon-only control: 36px box, glyph rotates under the cursor. */
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5625rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-muted);
+    transition:
+      color 220ms ease,
+      border-color 220ms ease,
+      transform 220ms ease;
+  }
+
+  .icon-btn:hover {
+    color: var(--color-fg);
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .icon-btn svg {
+    transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .icon-btn:hover svg {
+    transform: rotate(28deg);
+  }
+
+  /**
+   * A text link that grows its gap as the arrow slides away.
+   *
+   * The vertical padding is not decoration: the label is only ~19px tall, so
+   * without it the tap target falls well under the 44px minimum on a phone.
+   * It is padding rather than a min-height so the text baseline still aligns
+   * with the section heading it sits beside.
+   */
+  .link-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    padding-block: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-faint);
+    transition:
+      color 220ms ease,
+      gap 260ms ease;
+  }
+
+  .link-arrow:hover {
+    color: var(--color-brand);
+    gap: 0.75rem;
+  }
+
+  /* ---------- Surfaces ---------- */
+
+  /**
+   * The card. Lifts, brightens its border, and washes an accent gradient in
+   * from the top-left corner. Used by project, template and pillar cards, so
+   * one hover language covers the whole site.
+   */
+  .lift-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition:
+      transform 340ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 300ms ease,
+      box-shadow 340ms ease;
+  }
+
+  .lift-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      520px 220px at 12% 0%,
+      color-mix(in oklch, var(--color-brand) 16%, transparent),
+      transparent 68%
+    );
+    transition: opacity 380ms ease;
+  }
+
+  .lift-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-border-strong);
+    box-shadow: 0 24px 48px -30px oklch(0% 0 0 / 0.7);
+  }
+
+  .lift-card:hover::before {
+    opacity: 1;
+  }
+
+  /** The accent spine on the left edge of a hovered card. */
+  .lift-card::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-brand);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .lift-card:hover::after {
+    transform: scaleY(1);
+  }
+
+  /* Everything inside a card has to sit above the ::before wash. */
+  .lift-card > * {
+    position: relative;
+  }
+
+  /** The round "go" affordance. Fills with the accent and rotates on hover. */
+  .go-dot {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: 1px solid var(--color-border);
+    color: var(--color-muted);
+    transition:
+      background-color 300ms ease,
+      color 300ms ease,
+      border-color 300ms ease,
+      transform 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .group:hover .go-dot {
+    background-color: var(--color-brand);
+    color: var(--color-brand-fg);
+    border-color: var(--color-brand);
+    transform: rotate(-45deg) scale(1.08);
+  }
+
+  /** A technology tag. Individually hoverable, so the stack feels alive. */
+  .tech-chip {
+    border-radius: 0.375rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 0.25rem 0.5625rem;
+    font-family: var(--font-mono);
+    font-size: 0.65625rem;
+    color: var(--color-faint);
+    transition:
+      color 200ms ease,
+      border-color 200ms ease,
+      transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .tech-chip:hover {
+    color: var(--color-fg);
+    border-color: var(--color-brand);
+    transform: translateY(-2px);
+  }
+
+  /** One cell of the statistics rail. The top edge draws in on hover. */
+  .stat-cell {
+    position: relative;
+    overflow: hidden;
+    padding: 1.625rem 1.5rem;
+    transition: background-color 300ms ease;
+  }
+
+  .stat-cell::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 2px;
+    background: var(--color-brand);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .stat-cell:hover {
+    background-color: color-mix(in oklch, var(--color-fg) 3.5%, transparent);
+  }
+
+  .stat-cell:hover::after {
+    transform: scaleX(1);
+  }
+
+  /* ---------- Portrait ---------- */
+
+  /** Concentric rings that light up and turn when the portrait is hovered. */
+  .portrait-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--color-border);
+    transition:
+      border-color 520ms ease,
+      transform 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .group:hover .portrait-ring {
+    border-color: color-mix(in oklch, var(--color-brand) 52%, var(--color-border));
+  }
+
+  .group:hover .portrait-ring-turn {
+    transform: rotate(34deg);
+  }
+
+  .group:hover .portrait-ring-grow {
+    transform: scale(1.035);
+  }
+
+  .portrait-frame {
+    position: relative;
+    border-radius: 50%;
+    padding: 3px;
+    background: linear-gradient(
+      150deg,
+      var(--color-brand),
+      color-mix(in oklch, var(--color-brand) 30%, var(--color-border))
+    );
+    box-shadow: 0 0 44px -10px color-mix(in oklch, var(--color-brand) 60%, transparent);
+    transition:
+      box-shadow 520ms ease,
+      transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .group:hover .portrait-frame {
+    transform: translateY(-4px);
+    box-shadow: 0 0 78px -6px var(--color-brand);
+  }
+
+  /**
+   * A fact beside the portrait. Deliberately unpositioned: on a phone these
+   * wrap into a normal row under the photograph, and only from `lg` do
+   * utilities lift them into floating positions — so each fact exists exactly
+   * once in the markup instead of twice behind breakpoint visibility.
+   */
+  .portrait-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    white-space: nowrap;
+    border-radius: 100px;
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklch, var(--color-raised) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-muted);
+    box-shadow: 0 8px 24px -12px oklch(0% 0 0 / 0.5);
+    transition:
+      transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 300ms ease,
+      color 300ms ease;
+  }
+
+  .group:hover .portrait-chip {
+    border-color: var(--color-border-strong);
+    color: var(--color-fg);
+  }
+
+  /**
+   * Each chip drifts a different way, so the group reads as three objects
+   * reacting rather than one block moving. Only meaningful once the chips are
+   * absolutely positioned, which is why the transforms are scoped to `lg`.
+   */
+  @media (width >= 64rem) {
+    .group:hover .drift-a {
+      transform: translate(-8px, -6px);
+    }
+
+    .group:hover .drift-b {
+      transform: translate(9px, 4px);
+    }
+
+    .group:hover .drift-c {
+      transform: translate(-2px, 9px);
+    }
+  }
+
+  /* ---------- Status dot ---------- */
+
+  .live-dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 50%;
+    background: var(--color-live);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-live) 22%, transparent);
+    animation: live-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes live-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.42;
+    }
+  }
+
+  /* ---------- Mobile sidebar ---------- */
+
+  .drawer-scrim {
+    position: fixed;
+    inset: 0;
+    background: oklch(8% 0.01 255 / 0.62);
+    backdrop-filter: blur(3px);
+    animation: scrim-in 260ms ease;
+  }
+
+  @keyframes scrim-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .drawer-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(19rem, 88vw);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--color-border-strong);
+    /* Opaque on purpose: a translucent panel over the scrim muddies the link
+       labels, and navigation is the one surface that must stay legible. */
+    background: var(--color-surface);
+    box-shadow: -28px 0 60px -20px oklch(0% 0 0 / 0.7);
+    animation: drawer-in 340ms cubic-bezier(0.2, 0.85, 0.2, 1);
+  }
+
+  @keyframes drawer-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
+
+  /** A sidebar row: 50px tall, with an accent spine that grows on hover. */
+  .drawer-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.8125rem;
+    overflow: hidden;
+    min-height: 3.125rem;
+    padding: 0 0.75rem;
+    border-radius: 0.625rem;
+    color: var(--color-muted);
+    transition:
+      color 200ms ease,
+      background-color 220ms ease;
+  }
+
+  .drawer-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.75rem;
+    bottom: 0.75rem;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--color-brand);
+    transform: scaleY(0);
+    transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .drawer-item:hover {
+    color: var(--color-fg);
+    background-color: color-mix(in oklch, var(--color-fg) 6%, transparent);
+  }
+
+  .drawer-item:hover::before,
+  .drawer-item[aria-current='page']::before {
+    transform: scaleY(1);
+  }
+
+  .drawer-item[aria-current='page'] {
+    color: var(--color-fg);
+    background-color: color-mix(in oklch, var(--color-brand) 12%, transparent);
+  }
+
+  .drawer-chevron {
+    margin-left: auto;
+    opacity: 0;
+    transform: translateX(-5px);
+    transition:
+      opacity 240ms ease,
+      transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .drawer-item:hover .drawer-chevron {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
   /* Toasts slide in from the edge they are anchored to. */
   .toast-enter {
     animation: toast-in 160ms ease-out;
@@ -73,13 +776,6 @@
     from {
       opacity: 0;
       transform: translateY(8px) scale(0.98);
-    }
-  }
-
-  /* Motion is decoration here; the announcement is what carries the meaning. */
-  @media (prefers-reduced-motion: reduce) {
-    .toast-enter {
-      animation: none;
     }
   }
 }

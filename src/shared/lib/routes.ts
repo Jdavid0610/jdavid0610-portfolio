@@ -6,23 +6,19 @@ import type { Locale } from '@/shared/i18n/config'
  */
 export const routes = {
   home: (l: Locale) => `/${l}`,
+  about: (l: Locale) => `/${l}/about`,
+  projects: (l: Locale) => `/${l}/projects`,
+  project: (l: Locale, slug: string) => `/${l}/projects/${slug}`,
+  openSource: (l: Locale) => `/${l}/open-source`,
+  template: (l: Locale, slug: string) => `/${l}/open-source/${slug}`,
+  experience: (l: Locale) => `/${l}/experience`,
+  faq: (l: Locale) => `/${l}/faq`,
+  contact: (l: Locale) => `/${l}/contact`,
   blog: (l: Locale) => `/${l}/blog`,
-  docs: (l: Locale) => `/${l}/docs`,
-  docPage: (l: Locale, slug: string) => `/${l}/docs/${slug}`,
   blogPost: (l: Locale, slug: string) => `/${l}/blog/${slug}`,
-  signIn: (l: Locale, callbackUrl?: string) =>
-    callbackUrl ? `/${l}/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}` : `/${l}/sign-in`,
-  signUp: (l: Locale) => `/${l}/sign-up`,
-  dashboard: (l: Locale) => `/${l}/dashboard`,
-  posts: (l: Locale) => `/${l}/posts`,
-  newPost: (l: Locale) => `/${l}/posts/new`,
-  editPost: (l: Locale, id: string) => `/${l}/posts/${id}/edit`,
-  settings: (l: Locale) => `/${l}/settings/profile`,
-  admin: (l: Locale) => `/${l}/admin`,
 } as const
 
-/** Prefixes that require a session — read by the proxy for optimistic redirects. */
-export const protectedSegments = ['dashboard', 'posts', 'settings', 'admin'] as const
-
-/** Auth pages a signed-in user should be bounced away from. */
-export const authOnlySegments = ['sign-in', 'sign-up', 'forgot-password'] as const
+/** Absolute URL for a locale-aware path. Used by JSON-LD and `llms.txt`. */
+export function absolute(base: string, path: string): string {
+  return `${base}${path}`
+}

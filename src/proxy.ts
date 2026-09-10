@@ -1,26 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getSessionCookie } from 'better-auth/cookies'
 import { defaultLocale, isLocale, locales, matchLocale, type Locale } from '@/shared/i18n/config'
-import { authOnlySegments, protectedSegments, routes } from '@/shared/lib/routes'
-import { isMockModeEnabled, MOCK_SESSION_COOKIE } from '@/shared/lib/mock-mode'
 
 /**
  * Next 16 renamed `middleware` to `proxy`. It runs on the Node runtime for
  * every matched request, including prefetches.
  *
- * Its job is strictly:
- *   1. put a locale on every URL, and
- *   2. make *optimistic* auth redirects so signed-out users never see a
- *      protected page flash.
- *
- * It deliberately does not query the database and is NOT a security boundary
- * — a cookie only proves a cookie exists. The real check is `requireSession()`
- * in the protected layout and in every action.
+ * Its only job on this site is to put a locale on every URL: the site is a
+ * fully prerendered static portfolio with no session and nothing to protect.
+ * Machine-readable routes (`/robots.txt`, `/sitemap.xml`, `/llms.txt`,
+ * `/llms-full.txt`, `/manifest.webmanifest`) must never be locale-prefixed,
+ * which the matcher below guarantees by excluding anything with an extension.
  */
 export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl
-
-  // --- 1. Locale ----------------------------------------------------------
+  const { pathname } = request.nextUrl
   const segments = pathname.split('/')
   const maybeLocale = segments[1]
 
@@ -32,35 +24,11 @@ export function proxy(request: NextRequest) {
   }
 
   const locale: Locale = maybeLocale
-  const pathWithoutLocale = `/${segments.slice(2).join('/')}`
-  const topSegment = segments[2] ?? ''
 
-  // --- 2. Optimistic auth -------------------------------------------------
-  const hasSessionCookie = isMockModeEnabled()
-    ? Boolean(request.cookies.get(MOCK_SESSION_COOKIE))
-    : Boolean(getSessionCookie(request))
-  const isProtected = (protectedSegments as readonly string[]).includes(topSegment)
-  const isAuthOnly = (authOnlySegments as readonly string[]).includes(topSegment)
-
-  if (isProtected && !hasSessionCookie) {
-    const url = request.nextUrl.clone()
-    url.pathname = `/${locale}/sign-in`
-    url.search = ''
-    url.searchParams.set('callbackUrl', `${pathname}${search}`)
-    return NextResponse.redirect(url)
-  }
-
-  if (isAuthOnly && hasSessionCookie) {
-    return NextResponse.redirect(new URL(routes.dashboard(locale), request.url))
-  }
-
-  // --- 3. Publish request context ----------------------------------------
-  // Server components cannot read the current pathname; these headers are how
-  // the session DAL builds a locale-aware redirect with a callback URL.
+  // Server components cannot read the current pathname; publishing it as a
+  // header keeps that option open without any route reading it today.
   const headers = new Headers(request.headers)
   headers.set('x-locale', locale)
-  headers.set('x-pathname', `${pathname}${search}`)
-  headers.set('x-path-without-locale', pathWithoutLocale)
 
   return NextResponse.next({ request: { headers } })
 }
@@ -74,7 +42,8 @@ function resolveLocale(request: NextRequest): Locale {
 export const config = {
   /**
    * Everything except API routes, Next internals and files with an extension.
-   * Auth endpoints must not be locale-prefixed, hence the `api` exclusion.
+   * The extension exclusion is what keeps `/llms.txt`, `/robots.txt` and
+   * `/sitemap.xml` outside `[locale]`.
    */
   matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)'],
 }

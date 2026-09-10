@@ -13,8 +13,8 @@ describe('buildMetadata', () => {
     expect(languages['x-default']).toBe('https://example.com/en/blog')
   })
 
-  it('marks private pages noindex', () => {
-    const robots = buildMetadata({ locale: 'en', path: '/dashboard', noIndex: true }).robots
+  it('marks a page noindex on request', () => {
+    const robots = buildMetadata({ locale: 'en', path: '/projects/unknown', noIndex: true }).robots
     expect(robots).toMatchObject({ index: false, follow: false })
   })
 })

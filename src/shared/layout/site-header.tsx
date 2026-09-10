@@ -1,41 +1,51 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
 import { getDictionary } from '@/shared/i18n/get-dictionary'
 import type { Locale } from '@/shared/i18n/config'
 import { routes } from '@/shared/lib/routes'
 import { siteConfig } from '@/shared/config/site'
 import { LocaleSwitcher } from './locale-switcher'
+import { MobileNav } from './mobile-nav'
+import { PrimaryNav } from './primary-nav'
+import { ThemeToggle } from './theme-toggle'
+import { navItems, primaryNavItems } from './nav-items'
 
 /**
- * The header takes its auth corner as a slot instead of reading the session
- * itself. That is what lets the same header sit on a statically prerendered
- * marketing page and on a per-request authenticated page:
+ * Server-rendered and free of any session or header read, so every route below
+ * it stays prerendered. Three small islands hydrate on top: the link row (for
+ * `aria-current`), the theme toggle and the drawer.
  *
- *   marketing → <AuthActions />        (client, keeps the route static)
- *   app       → <UserMenu user={…} />  (server, already dynamic)
+ * The monogram replaces the wordmark it used to render. A two-letter mark on
+ * the brand gradient survives being shrunk to a favicon, and it gives the
+ * header something that is his rather than the template's.
  */
-export function SiteHeader({ locale, auth }: { locale: Locale; auth: ReactNode }) {
+export function SiteHeader({ locale }: { locale: Locale }) {
   const t = getDictionary(locale)
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-bg/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-5xl items-center gap-6 px-4">
-        <Link href={routes.home(locale)} className="font-semibold">
-          {siteConfig.name}
+    <header className="sticky top-0 z-30 border-b border-border bg-bg/80 backdrop-blur-lg">
+      <div className="mx-auto flex h-[4.625rem] max-w-3xl items-center gap-6 px-4 lg:max-w-5xl">
+        <Link href={routes.home(locale)} className="group flex shrink-0 items-center gap-3">
+          <span aria-hidden className="mark-badge size-[2.125rem] font-display text-[0.8125rem] font-bold">
+            JO
+          </span>
+          <span className="font-display text-[0.9375rem] font-bold tracking-tight">
+            {siteConfig.shortName}
+          </span>
         </Link>
 
-        <nav className="hidden gap-4 text-sm text-muted sm:flex">
-          <Link href={routes.blog(locale)} className="hover:text-fg">
-            {t.nav.blog}
-          </Link>
-          <Link href={routes.docs(locale)} className="hover:text-fg">
-            {t.nav.docs}
-          </Link>
-        </nav>
+        <PrimaryNav items={primaryNavItems(locale, t)} label={t.nav.primaryLabel} />
 
-        <div className="ml-auto flex items-center gap-3">
-          <LocaleSwitcher current={locale} />
-          {auth}
+        <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <div className="hidden sm:block">
+            <LocaleSwitcher current={locale} />
+          </div>
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
+          <Link href={routes.contact(locale)} className="cta hidden md:inline-flex">
+            {t.nav.hireMe}
+          </Link>
+          <MobileNav items={navItems(locale, t)} locale={locale} />
         </div>
       </div>
     </header>
