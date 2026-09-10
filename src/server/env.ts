@@ -33,14 +33,23 @@ const serverSchema = z.object({
     path: ['DATABASE_URL'],
   })
 
+/**
+ * Next inlines `NEXT_PUBLIC_*` at build time, substituting `""` for anything
+ * that is not defined. An unset public var therefore arrives as an empty
+ * string, not `undefined`, which would defeat `.default()` and produce a
+ * misleading "Invalid option" instead of "missing". Normalise first.
+ */
+const blankToUndefined = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === '' ? undefined : value), schema)
+
 const clientSchema = z.object({
-  NEXT_PUBLIC_APP_URL: z.url(),
+  NEXT_PUBLIC_APP_URL: blankToUndefined(z.url()),
   /**
    * Public because the browser has to know too: the client-side session read
    * and the proxy both branch on it. It only ever *enables* fake data — it can
    * never grant access, so exposing it is safe.
    */
-  NEXT_PUBLIC_MOCK_MODE: z.enum(['on', 'off']).default('off'),
+  NEXT_PUBLIC_MOCK_MODE: blankToUndefined(z.enum(['on', 'off']).default('off')),
 })
 
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'

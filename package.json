@@ -10,6 +10,7 @@
     "dev": "next dev",
     "dev:mock": "NEXT_PUBLIC_MOCK_MODE=on next dev",
     "build": "next build",
+    "vercel-build": "pnpm db:migrate && next build",
     "build:mock": "NEXT_PUBLIC_MOCK_MODE=on ALLOW_MOCKS_IN_PRODUCTION=true next build",
     "start": "next start",
     "lint": "eslint .",
