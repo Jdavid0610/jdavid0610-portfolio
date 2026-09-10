@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 is configured in CSS — there is no tailwind.config.js. */
+@theme {
+  --color-bg: oklch(99% 0.004 260);
+  --color-surface: oklch(100% 0 0);
+  --color-border: oklch(91% 0.006 260);
+  --color-fg: oklch(21% 0.02 260);
+  --color-muted: oklch(52% 0.015 260);
+  --color-brand: oklch(56% 0.19 265);
+  --color-brand-fg: oklch(99% 0 0);
+  --color-danger: oklch(58% 0.21 25);
+  --color-success: oklch(62% 0.16 155);
+
+  --radius-card: 0.75rem;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/**
+ * Dark palette.
+ *
+ * `@theme` only works at the top level: nested inside `@layer` and a media
+ * query it is hoisted, so these values overwrote the light ones unconditionally
+ * and the app rendered dark in every scheme. The fix is to let `@theme` define
+ * the light defaults and override the plain CSS variables it emits on `:root`
+ * here — which is ordinary cascade, and actually conditional.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: oklch(17% 0.015 260);
+    --color-surface: oklch(21% 0.018 260);
+    --color-border: oklch(30% 0.02 260);
+    --color-fg: oklch(96% 0.005 260);
+    --color-muted: oklch(70% 0.015 260);
+    --color-brand: oklch(70% 0.16 265);
+    --color-brand-fg: oklch(17% 0.02 260);
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-brand) 30%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Toasts slide in from the edge they are anchored to. */
+  .toast-enter {
+    animation: toast-in 160ms ease-out;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+
+  /* Motion is decoration here; the announcement is what carries the meaning. */
+  @media (prefers-reduced-motion: reduce) {
+    .toast-enter {
+      animation: none;
+    }
+  }
+}
